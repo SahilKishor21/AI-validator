@@ -1,0 +1,12 @@
+﻿.env
+.env.local
+.env.production
+.env.development
+node_modules/
+__pycache__/
+dist/
+build/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
