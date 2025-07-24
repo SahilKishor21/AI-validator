@@ -73,7 +73,7 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch(`http://localhost:8000/api/pages/${id}`, {
+          const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/${id}`, {
             method: 'DELETE',
           })
 
@@ -102,7 +102,7 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch('http://localhost:8000/api/pages', {
+          const response = await fetch('https://ai-validator-3.onrender.com/api/pages', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -132,7 +132,7 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch('http://localhost:8000/api/pages')
+          const response = await fetch('https://ai-validator-3.onrender.com/api/pages')
           if (!response.ok) {
             throw new Error('Failed to load pages')
           }
@@ -154,7 +154,7 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch(`http://localhost:8000/api/pages/${id}`)
+          const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/${id}`)
           if (!response.ok) {
             throw new Error('Failed to load page')
           }
@@ -174,7 +174,7 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch(`http://localhost:8000/api/pages/${id}`, {
+          const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/${id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -205,7 +205,7 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch(`http://localhost:8000/api/pages/${id}/share`, {
+          const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/${id}/share`, {
             method: 'POST',
           })
 
@@ -231,7 +231,7 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch(`http://localhost:8000/api/pages/${id}/share`, {
+          const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/${id}/share`, {
             method: 'DELETE',
           })
 

@@ -259,7 +259,12 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
       <Separator />
 
+      <label htmlFor="block-select" className="sr-only">
+        Block type
+      </label>
       <select
+        id="block-select"
+        aria-label="Block type"
         className="px-2 py-1 border border-gray-300 rounded text-sm dark:bg-gray-600"
         onChange={(e) => {
           const value = e.target.value

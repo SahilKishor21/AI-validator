@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ai-validator-3.onrender.com/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -36,20 +36,20 @@ export interface FactCheckResponse {
 }
 
 export const pageApi = {
-  getAll: () => api.get<Page[]>('http://localhost:8000/api/pages'),
-  getById: (id: string) => api.get<Page>(`http://localhost:8000/api/pages/${id}`),
-  getByShareToken: (token: string) => api.get<Page>(`http://localhost:8000/api/pages/shared/${token}`),
-  create: (data: { title: string }) => api.post<Page>('http://localhost:8000/api/pages', data),
+  getAll: () => api.get<Page[]>('https://ai-validator-3.onrender.com/api/pages'),
+  getById: (id: string) => api.get<Page>(`https://ai-validator-3.onrender.com/api/pages/${id}`),
+  getByShareToken: (token: string) => api.get<Page>(`https://ai-validator-3.onrender.com/api/pages/shared/${token}`),
+  create: (data: { title: string }) => api.post<Page>('https://ai-validator-3.onrender.com/api/pages', data),
   update: (id: string, data: { title?: string; content?: any[] }) =>
-    api.put<Page>(`http://localhost:8000/api/pages/${id}`, data),
-  delete: (id: string) => api.delete(`http://localhost:8000/api/pages/${id}`),
-  share: (id: string) => api.post<{ shareToken: string }>(`http://localhost:8000/api/pages/${id}/share`),
-  unshare: (id: string) => api.delete(`http://localhost:8000/api/pages/${id}/share`),
+    api.put<Page>(`https://ai-validator-3.onrender.com/api/pages/${id}`, data),
+  delete: (id: string) => api.delete(`https://ai-validator-3.onrender.com/api/pages/${id}`),
+  share: (id: string) => api.post<{ shareToken: string }>(`https://ai-validator-3.onrender.com/api/pages/${id}/share`),
+  unshare: (id: string) => api.delete(`https://ai-validator-3.onrender.com/api/pages/${id}/share`),
 }
 
 export const aiApi = {
   factCheck: (text: string) =>
-    api.post<FactCheckResponse>('http://localhost:8000/api/ai/fact-check', { text }),
+    api.post<FactCheckResponse>('https://ai-validator-3.onrender.com/api/ai/fact-check', { text }),
 }
 
 export default api

@@ -48,7 +48,11 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       </button>
       
       {/* Text Dropdown */}
-      <select className="px-2 py-1 text-sm border-0 bg-transparent focus:outline-none dark:bg-gray-600 ">
+      <select
+        className="px-2 py-1 text-sm border-0 bg-transparent focus:outline-none dark:bg-gray-600 "
+        aria-label="Text style"
+        title="Text style"
+      >
         <option>Text</option>
         <option>Heading 1</option>
         <option>Heading 2</option>

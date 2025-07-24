@@ -74,7 +74,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     setFactChecking(true)
 
     try {
-      const response = await fetch('http://localhost:8000/api/ai/fact-check', {
+      const response = await fetch('https://ai-validator-3.onrender.com/api/ai/fact-check', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -21,7 +21,7 @@ export const SharedPage = () => {
 
       try {
         console.log('Loading shared page with token:', token)
-        const response = await fetch(`http://localhost:8000/api/pages/shared/${token}`)
+        const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/shared/${token}`)
         
         if (!response.ok) {
           if (response.status === 404) {
