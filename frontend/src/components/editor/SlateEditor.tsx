@@ -8,7 +8,6 @@ import { CommentSystem } from './CommentSystem'
 import { usePageStore } from '../../store/page-store'
 import { useAppStore } from '../../store/app-store'
 
-// Define custom types - UPDATED with new element types
 type CustomText = {
   text: string
   bold?: boolean
@@ -75,7 +74,6 @@ type CodeBlockElement = {
   children: CustomText[]
 }
 
-// NEW TYPES - Added for table, link, image support
 type LinkElement = {
   type: 'link'
   url: string
@@ -103,7 +101,6 @@ type TableCellElement = {
   children: CustomElement[]
 }
 
-// Updated CustomElement type - includes all new types
 type CustomElement =
   | TitleElement
   | ParagraphElement
@@ -125,7 +122,6 @@ type CustomDescendant = CustomElement | CustomText
 
 type CustomEditor = BaseEditor & ReactEditor & HistoryEditor
 
-// Module augmentation for Slate types - UPDATED
 declare module 'slate' {
   interface CustomTypes {
     Editor: CustomEditor
@@ -202,14 +198,7 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
   const [showFloatingToolbar, setShowFloatingToolbar] = useState(false)
   const [floatingToolbarPosition, setFloatingToolbarPosition] = useState({ top: 0, left: 0 })
   const [isFactChecking, setIsFactChecking] = useState(false)
-  const [factCheckResult, setFactCheckResult] = useState<{
-    result: string
-    confidence: number
-    sources: string[]
-    selectedText: string
-    status: 'correct' | 'incorrect' | 'uncertain'
-    statusIcon: string
-  } | null>(null)
+
   const editorRef = useRef<HTMLDivElement>(null)
   const { savePage, currentPage } = usePageStore()
   const { comments, addComment, removeCommentsInRange } = useAppStore()
@@ -259,7 +248,6 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
       return ['link'].includes((element as CustomElement).type) || isInline(element)
     }
 
-    // ADDED: Handle void elements (images)
     e.isVoid = element => {
       return ['image'].includes((element as CustomElement).type)
     }
@@ -286,11 +274,9 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
     setEditorValue(newValue)
   }, [])
 
-  // UPDATED renderElement function with all new element types
   const renderElement = useCallback((props: any) => {
     const style: React.CSSProperties = {}
     
-    // Add text alignment if present
     if (props.element.align) {
       style.textAlign = props.element.align
     }
@@ -316,8 +302,6 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
         return <li className="mb-1" {...props.attributes}>{props.children}</li>
       case 'code-block':
         return <pre className="bg-gray-100 p-4 rounded-md font-mono text-sm mb-4 overflow-auto" {...props.attributes}><code>{props.children}</code></pre>
-      
-      // NEW ELEMENTS - Added rendering for table, link, image
       case 'link':
         return (
           <a 
@@ -373,7 +357,6 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
             {props.children}
           </td>
         )
-      
       default:
         return <p className="mb-4" style={style} {...props.attributes}>{props.children}</p>
     }
@@ -504,9 +487,73 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
       const result = await response.json()
       console.log('Fact check result:', result)
       
+      let cleanResult = result.result
+      let actualConfidence = result.confidence
+      let actualSources = result.sources || []
+      
+      if (typeof cleanResult === 'string' && (cleanResult.includes('```json') || cleanResult.includes('"result":'))) {
+        try {
+          let jsonStr = cleanResult
+          if (jsonStr.includes('```json')) {
+            jsonStr = jsonStr.split('```json')[1].split('```')[0].trim()
+          } else if (jsonStr.includes('```')) {
+            jsonStr = jsonStr.split('```')[1].split('```')[0].trim()
+          }
+          
+          const parsedJson = JSON.parse(jsonStr)
+          cleanResult = parsedJson.result || parsedJson.analysis || cleanResult
+          actualConfidence = parsedJson.confidence || actualConfidence
+          actualSources = parsedJson.sources || actualSources
+          
+        } catch (parseError) {
+          console.log('Could not parse embedded JSON, using original result')
+          cleanResult = cleanResult.replace(/```json/g, '').replace(/```/g, '').replace(/^\s*{\s*"result":\s*"/g, '').replace(/",?\s*"confidence".*$/g, '')
+        }
+      }
+      
+      cleanResult = cleanResult.replace(/^["']|["']$/g, '').trim()
+      
+      let status: 'correct' | 'incorrect' | 'uncertain' = 'uncertain'
+      let statusIcon = '✅'
+      
+      const resultText = cleanResult.toLowerCase()
+      if (resultText.includes('correct') || resultText.includes('true') || resultText.includes('accurate')) {
+        status = 'correct'
+        statusIcon = '✅'
+      } else if (resultText.includes('incorrect') || resultText.includes('false') || resultText.includes('wrong')) {
+        status = 'incorrect' 
+        statusIcon = '❌'
+      } else if (resultText.includes('uncertain') || resultText.includes('unclear') || actualConfidence < 0.5) {
+        status = 'uncertain'
+        statusIcon = '❓'
+      }
+      
+      const aiSource = actualSources && actualSources.length > 0 ? 
+        (actualSources[0].includes('Gemini') ? 'Gemini AI' : 
+         actualSources[0].includes('OpenAI') ? 'OpenAI' :
+         actualSources[0].includes('Hugging') ? 'Hugging Face' : 'AI') : 'AI'
+      
+      const confidencePercentage = Math.round(actualConfidence * 100)
+      const confidenceBar = '█'.repeat(Math.floor(confidencePercentage / 10)) + '░'.repeat(10 - Math.floor(confidencePercentage / 10))
+      
+      const formattedText = `${statusIcon} AI FACT CHECK - ${status.toUpperCase()}
+
+📝 Selected Text:
+"${selectedText}"
+
+🔍 Analysis:
+${cleanResult}
+
+📊 Confidence: ${confidencePercentage}%
+${confidenceBar} ${confidencePercentage}%
+
+🤖 Powered by: ${aiSource}
+
+${actualSources && actualSources.length > 0 ? `📚 Sources:\n${actualSources.map(source => `• ${source}`).join('\n')}` : ''}`
+      
       addComment({
         id: Date.now().toString(),
-        text: result.result,
+        text: formattedText,
         author: 'AI',
         confidence: result.confidence,
         sources: result.sources || [],
@@ -520,13 +567,20 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
       setSelectionRange(null)
       
     } catch (error) {
-  
+      console.error('Fact check error:', error)
+      
+      const errorText = `⚠️ AI FACT CHECK ERROR
+
+❌ Fact check failed. Please make sure the backend server is running and try again.
+
+📝 Selected text: "${selectedText}"`
+      
       addComment({
         id: Date.now().toString(),
-        text: 'Fact check failed. Please make sure the backend server is running.',
+        text: errorText,
         author: 'AI',
         confidence: 0,
-        sources: [],
+        sources: ['System Error'],
         timestamp: new Date().toISOString(),
         selectedText: selectedText,
         position: selectionRange
@@ -577,105 +631,6 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
           )}
         </div>
       </Slate>
-      
-      {/* Fact Check Result Card */}
-      {factCheckResult && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <span className="text-2xl">{factCheckResult.statusIcon}</span>
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    AI Fact Check Result
-                  </h3>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    factCheckResult.status === 'correct' 
-                      ? 'bg-green-100 text-green-800' 
-                      : factCheckResult.status === 'incorrect'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {factCheckResult.status.charAt(0).toUpperCase() + factCheckResult.status.slice(1)}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setFactCheckResult(null)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                  aria-label="Close"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              {/* Selected Text */}
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Text:</h4>
-                <p className="text-gray-900 bg-gray-50 p-3 rounded-md border italic">
-                  "{factCheckResult.selectedText}"
-                </p>
-              </div>
-              
-              {/* Analysis */}
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Analysis:</h4>
-                <p className="text-gray-900 leading-relaxed">
-                  {factCheckResult.result}
-                </p>
-              </div>
-              
-              {/* Confidence */}
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Confidence:</h4>
-                <div className="flex items-center space-x-3">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full ${
-                        factCheckResult.confidence >= 0.8 
-                          ? 'bg-green-500' 
-                          : factCheckResult.confidence >= 0.6
-                          ? 'bg-yellow-500'
-                          : 'bg-red-500'
-                      }`}
-                      style={{ width: `${factCheckResult.confidence * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">
-                    {Math.round(factCheckResult.confidence * 100)}%
-                  </span>
-                </div>
-              </div>
-              
-              {/* Sources */}
-              {factCheckResult.sources.length > 0 && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Sources:</h4>
-                  <ul className="space-y-1">
-                    {factCheckResult.sources.map((source, index) => (
-                      <li key={index} className="text-sm text-blue-600 hover:text-blue-800">
-                        • {source}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {/* Footer */}
-              <div className="flex justify-end pt-4 border-t border-gray-200">
-                <button
-                  onClick={() => setFactCheckResult(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       
       <CommentSystem comments={comments} />
     </div>

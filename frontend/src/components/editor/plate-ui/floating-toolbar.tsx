@@ -1,6 +1,6 @@
 import React from 'react'
 import { useSlate } from 'slate-react'
-import { range } from 'slate'
+import { Range } from 'slate'
 import { AIPlugin } from '../plugins/ai-plugin'
 import { CommentPlugin } from '../plugins/comment-plugin'
 import { useEditorStore } from '../../../store/editor-store'
