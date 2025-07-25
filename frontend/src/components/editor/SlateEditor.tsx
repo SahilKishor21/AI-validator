@@ -487,12 +487,15 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
       const result = await response.json()
       console.log('Fact check result:', result)
       
+      // Better parsing of the AI response
       let cleanResult = result.result
       let actualConfidence = result.confidence
       let actualSources = result.sources || []
       
+      // If the result contains JSON, extract the actual content
       if (typeof cleanResult === 'string' && (cleanResult.includes('```json') || cleanResult.includes('"result":'))) {
         try {
+          // Remove markdown code blocks
           let jsonStr = cleanResult
           if (jsonStr.includes('```json')) {
             jsonStr = jsonStr.split('```json')[1].split('```')[0].trim()
@@ -500,6 +503,7 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
             jsonStr = jsonStr.split('```')[1].split('```')[0].trim()
           }
           
+          // Parse the JSON
           const parsedJson = JSON.parse(jsonStr)
           cleanResult = parsedJson.result || parsedJson.analysis || cleanResult
           actualConfidence = parsedJson.confidence || actualConfidence
@@ -507,23 +511,25 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
           
         } catch (parseError) {
           console.log('Could not parse embedded JSON, using original result')
+          // If parsing fails, clean up the raw text
           cleanResult = cleanResult.replace(/```json/g, '').replace(/```/g, '').replace(/^\s*{\s*"result":\s*"/g, '').replace(/",?\s*"confidence".*$/g, '')
         }
       }
       
+      // Clean up any remaining quotes and formatting
       cleanResult = cleanResult.replace(/^["']|["']$/g, '').trim()
       
       let status: 'correct' | 'incorrect' | 'uncertain' = 'uncertain'
-      let statusIcon = '✅'
+      let statusIcon = '❓'
       
       const resultText = cleanResult.toLowerCase()
-      if (resultText.includes('correct') || resultText.includes('true') || resultText.includes('accurate')) {
-        status = 'correct'
-        statusIcon = '✅'
-      } else if (resultText.includes('incorrect') || resultText.includes('false') || resultText.includes('wrong')) {
+      if (resultText.includes('incorrect') || resultText.includes('false') || resultText.includes('wrong') || resultText.includes('not correct')) {
         status = 'incorrect' 
         statusIcon = '❌'
-      } else if (resultText.includes('uncertain') || resultText.includes('unclear') || actualConfidence < 0.5) {
+      } else if (resultText.includes('correct') || resultText.includes('true') || resultText.includes('accurate') || resultText.includes('yes')) {
+        status = 'correct'
+        statusIcon = '✅'
+      } else if (resultText.includes('uncertain') || resultText.includes('unclear') || resultText.includes('partially') || actualConfidence < 0.5) {
         status = 'uncertain'
         statusIcon = '❓'
       }
