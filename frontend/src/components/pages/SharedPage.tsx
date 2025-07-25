@@ -5,6 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { initialValue } from '../../lib/slate-types'
 import { Loader2, AlertCircle, FileText } from 'lucide-react'
 
+const API_BASE_URL = import.meta.env.MODE === 'production' 
+  ? 'https://ai-validator-3.onrender.com/api' 
+  : 'http://localhost:8000/api'
+
 export const SharedPage = () => {
   const { token } = useParams<{ token: string }>()
   const [page, setPage] = React.useState<any>(null)
@@ -21,9 +25,8 @@ export const SharedPage = () => {
 
       try {
         console.log('Loading shared page with token:', token)
-        
-        // Use relative URL - it will use the same domain as the frontend
-        const response = await fetch(`/api/pages/shared/${token}`)
+      
+        const response = await fetch(`${API_BASE_URL}/pages/shared/${token}`)
         
         console.log('Response status:', response.status)
         console.log('Response ok:', response.ok)
@@ -41,7 +44,6 @@ export const SharedPage = () => {
         const pageData = await response.json()
         console.log('Loaded shared page:', pageData)
         
-        // Validate the page data
         if (!pageData || !pageData.id) {
           throw new Error('Invalid page data received')
         }
