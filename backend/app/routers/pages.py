@@ -16,18 +16,42 @@ def create_page(page: PageCreate, db: Session = Depends(get_db)):
 def read_pages(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return page_service.get_pages(db, skip=skip, limit=limit)
 
+# IMPORTANT: Put specific routes BEFORE generic ones
+@router.get("/shared/{token}", response_model=Page)
+def read_shared_page(token: str, db: Session = Depends(get_db)):
+    print(f"[ROUTER] Received request for shared page with token: {token}")
+    
+    db_page = page_service.get_page_by_share_token(db, token=token)
+    
+    if db_page is None:
+        print(f"[ROUTER] No shared page found for token: {token}")
+        raise HTTPException(status_code=404, detail="Shared page not found or not public")
+    
+    print(f"[ROUTER] Successfully found shared page: {db_page.id}")
+    return db_page
+
+@router.post("/{page_id}/share")
+def share_page(page_id: str, db: Session = Depends(get_db)):
+    print(f"[ROUTER] Sharing page: {page_id}")
+    share_token = page_service.share_page(db, page_id=page_id)
+    if share_token is None:
+        raise HTTPException(status_code=404, detail="Page not found")
+    return {"shareToken": share_token}  
+
+@router.delete("/{page_id}/share")
+def unshare_page(page_id: str, db: Session = Depends(get_db)):
+    print(f"[ROUTER] Unsharing page: {page_id}")
+    success = page_service.unshare_page(db, page_id=page_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Page not found")
+    return {"message": "Page unshared successfully"}
+
+# Generic routes go AFTER specific ones
 @router.get("/{page_id}", response_model=Page)
 def read_page(page_id: str, db: Session = Depends(get_db)):
     db_page = page_service.get_page(db, page_id=page_id)
     if db_page is None:
         raise HTTPException(status_code=404, detail="Page not found")
-    return db_page
-
-@router.get("/shared/{token}", response_model=Page)
-def read_shared_page(token: str, db: Session = Depends(get_db)):
-    db_page = page_service.get_page_by_share_token(db, token=token)
-    if db_page is None:
-        raise HTTPException(status_code=404, detail="Shared page not found")
     return db_page
 
 @router.put("/{page_id}", response_model=Page)
@@ -43,17 +67,3 @@ def delete_page(page_id: str, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="Page not found")
     return {"message": "Page deleted successfully"}
-
-@router.post("/{page_id}/share")
-def share_page(page_id: str, db: Session = Depends(get_db)):
-    share_token = page_service.share_page(db, page_id=page_id)
-    if share_token is None:
-        raise HTTPException(status_code=404, detail="Page not found")
-    return {"shareToken": share_token}  
-
-@router.delete("/{page_id}/share")
-def unshare_page(page_id: str, db: Session = Depends(get_db)):
-    success = page_service.unshare_page(db, page_id=page_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Page not found")
-    return {"message": "Page unshared successfully"}
