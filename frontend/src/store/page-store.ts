@@ -33,6 +33,10 @@ interface PageStore {
   unsharePagePublic: (id: string) => Promise<void>
 }
 
+const API_BASE_URL = import.meta.env.MODE === 'production' 
+  ? 'https://ai-validator-3.onrender.com/api' 
+  : 'http://localhost:8000/api'
+
 // Helper function to normalize API response
 const normalizePage = (apiPage: any): Page => {
   return {
@@ -42,7 +46,7 @@ const normalizePage = (apiPage: any): Page => {
     createdAt: apiPage.createdAt || apiPage.created_at || new Date().toISOString(),
     updatedAt: apiPage.updatedAt || apiPage.updated_at || new Date().toISOString(),
     isPublic: apiPage.isPublic || apiPage.is_public || false,
-    shareToken: apiPage.shareToken || apiPage.share_token
+    shareToken: apiPage.shareToken || apiPage.share_token || undefined
   }
 }
 
@@ -73,7 +77,7 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/${id}`, {
+          const response = await fetch(`${API_BASE_URL}/pages/${id}`, {
             method: 'DELETE',
           })
 
@@ -102,7 +106,7 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch('https://ai-validator-3.onrender.com/api/pages', {
+          const response = await fetch(`${API_BASE_URL}/pages`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -132,7 +136,7 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch('https://ai-validator-3.onrender.com/api/pages')
+          const response = await fetch(`${API_BASE_URL}/pages`)
           if (!response.ok) {
             throw new Error('Failed to load pages')
           }
@@ -154,7 +158,7 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/${id}`)
+          const response = await fetch(`${API_BASE_URL}/pages/${id}`)
           if (!response.ok) {
             throw new Error('Failed to load page')
           }
@@ -174,12 +178,17 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/${id}`, {
+          const body: any = { content }
+          if (title !== undefined) {
+            body.title = title
+          }
+
+          const response = await fetch(`${API_BASE_URL}/pages/${id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ content, title }),
+            body: JSON.stringify(body),
           })
 
           if (!response.ok) {
@@ -205,19 +214,33 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/${id}/share`, {
+          console.log('Sharing page:', id)
+          
+          const response = await fetch(`${API_BASE_URL}/pages/${id}/share`, {
             method: 'POST',
           })
 
           if (!response.ok) {
+            const errorText = await response.text()
+            console.error('Share request failed:', response.status, errorText)
             throw new Error('Failed to share page')
           }
 
           const result = await response.json()
+          console.log('Share response:', result)
+          
           const shareToken = result.shareToken || result.share_token
+          
+          if (!shareToken) {
+            throw new Error('No share token received')
+          }
+          
           updatePage(id, { isPublic: true, shareToken })
+          console.log('Page updated with share token:', shareToken)
+          
           return shareToken
         } catch (error) {
+          console.error('Error sharing page:', error)
           setError(error instanceof Error ? error.message : 'Unknown error')
           throw error
         } finally {
@@ -231,17 +254,24 @@ export const usePageStore = create<PageStore>()(
         setError(null)
 
         try {
-          const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/${id}/share`, {
+          console.log('Unsharing page:', id)
+          
+          const response = await fetch(`${API_BASE_URL}/pages/${id}/share`, {
             method: 'DELETE',
           })
 
           if (!response.ok) {
+            const errorText = await response.text()
+            console.error('Unshare request failed:', response.status, errorText)
             throw new Error('Failed to unshare page')
           }
 
+          console.log('Page unshared successfully')
           updatePage(id, { isPublic: false, shareToken: undefined })
         } catch (error) {
+          console.error('Error unsharing page:', error)
           setError(error instanceof Error ? error.message : 'Unknown error')
+          throw error
         } finally {
           setLoading(false)
         }
