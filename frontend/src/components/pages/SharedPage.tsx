@@ -21,17 +21,31 @@ export const SharedPage = () => {
 
       try {
         console.log('Loading shared page with token:', token)
-        const response = await fetch(`https://ai-validator-3.onrender.com/api/pages/shared/${token}`)
+        
+        // Use relative URL - it will use the same domain as the frontend
+        const response = await fetch(`/api/pages/shared/${token}`)
+        
+        console.log('Response status:', response.status)
+        console.log('Response ok:', response.ok)
         
         if (!response.ok) {
+          const errorText = await response.text()
+          console.log('Error response body:', errorText)
+          
           if (response.status === 404) {
             throw new Error('Shared page not found or no longer available')
           }
-          throw new Error('Failed to load shared page')
+          throw new Error(`Failed to load shared page: ${response.status} - ${errorText}`)
         }
 
         const pageData = await response.json()
         console.log('Loaded shared page:', pageData)
+        
+        // Validate the page data
+        if (!pageData || !pageData.id) {
+          throw new Error('Invalid page data received')
+        }
+        
         setPage(pageData)
       } catch (err) {
         console.error('Error loading shared page:', err)
@@ -60,7 +74,7 @@ export const SharedPage = () => {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <Card className="max-w-full p-4">
+        <Card className="max-w-md p-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" />
@@ -68,10 +82,17 @@ export const SharedPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p>{error}</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Please check the URL or contact the page owner.
-            </p>
+            <p className="mb-4">{error}</p>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>Possible reasons:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>The shared link has expired</li>
+                <li>The page is no longer public</li>
+                <li>The page has been deleted</li>
+                <li>Invalid share token</li>
+              </ul>
+              <p className="mt-2">Please contact the page owner for a new link.</p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -96,6 +117,7 @@ export const SharedPage = () => {
         <SlateEditor 
           value={page?.content || initialValue}
           className="max-w-full mx-auto"
+          readOnly={true}
         />
       </main>
     </div>
