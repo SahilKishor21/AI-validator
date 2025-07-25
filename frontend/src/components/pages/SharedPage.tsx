@@ -15,6 +15,12 @@ export const SharedPage = () => {
   const [page, setPage] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = React.useState<string[]>([])
+
+  const addDebugInfo = (info: string) => {
+    console.log(info)
+    setDebugInfo(prev => [...prev, `${new Date().toISOString()}: ${info}`])
+  }
 
   React.useEffect(() => {
     const loadSharedPage = async () => {
@@ -25,19 +31,29 @@ export const SharedPage = () => {
       }
 
       try {
-        console.log('Loading shared page with token:', token)
-        console.log('API_BASE_URL:', API_BASE_URL)
-        console.log('Full URL:', `${API_BASE_URL}/pages/shared/${token}`)
+        addDebugInfo(`Starting to load shared page with token: ${token}`)
+        addDebugInfo(`Environment mode: ${import.meta.env.MODE}`)
+        addDebugInfo(`API_BASE_URL: ${API_BASE_URL}`)
+        
+        const fullUrl = `${API_BASE_URL}/pages/shared/${token}`
+        addDebugInfo(`Making request to: ${fullUrl}`)
         
         // Use the full backend URL instead of relative URL
-        const response = await fetch(`${API_BASE_URL}/pages/shared/${token}`)
+        const response = await fetch(fullUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        })
         
-        console.log('Response status:', response.status)
-        console.log('Response ok:', response.ok)
+        addDebugInfo(`Response status: ${response.status}`)
+        addDebugInfo(`Response ok: ${response.ok}`)
+        addDebugInfo(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`)
         
         if (!response.ok) {
           const errorText = await response.text()
-          console.log('Error response body:', errorText)
+          addDebugInfo(`Error response body: ${errorText}`)
           
           if (response.status === 404) {
             throw new Error('Shared page not found or no longer available')
@@ -46,7 +62,7 @@ export const SharedPage = () => {
         }
 
         const pageData = await response.json()
-        console.log('Loaded shared page:', pageData)
+        addDebugInfo(`Successfully received page data: ${JSON.stringify(pageData, null, 2)}`)
         
         // Validate the page data
         if (!pageData || !pageData.id) {
@@ -54,11 +70,15 @@ export const SharedPage = () => {
         }
         
         setPage(pageData)
+        addDebugInfo('Page loaded successfully')
       } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load shared page'
+        addDebugInfo(`Error loading shared page: ${errorMessage}`)
         console.error('Error loading shared page:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load shared page')
+        setError(errorMessage)
       } finally {
         setLoading(false)
+        addDebugInfo('Loading finished')
       }
     }
 
@@ -68,11 +88,21 @@ export const SharedPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <Card className="p-8">
-          <div className="flex items-center gap-4">
+        <Card className="p-8 max-w-lg">
+          <div className="flex items-center gap-4 mb-4">
             <Loader2 className="h-8 w-8 animate-spin" />
             <span>Loading shared page...</span>
           </div>
+          {debugInfo.length > 0 && (
+            <div className="text-xs text-muted-foreground">
+              <h4 className="font-semibold mb-2">Debug Info:</h4>
+              <div className="max-h-40 overflow-y-auto space-y-1">
+                {debugInfo.map((info, i) => (
+                  <div key={i} className="font-mono text-xs">{info}</div>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     )
@@ -81,7 +111,7 @@ export const SharedPage = () => {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <Card className="max-w-md p-4">
+        <Card className="max-w-2xl p-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" />
@@ -90,16 +120,29 @@ export const SharedPage = () => {
           </CardHeader>
           <CardContent>
             <p className="mb-4">{error}</p>
-            <div className="text-sm text-muted-foreground space-y-1">
+            <div className="text-sm text-muted-foreground space-y-1 mb-4">
               <p>Possible reasons:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>The shared link has expired</li>
                 <li>The page is no longer public</li>
                 <li>The page has been deleted</li>
                 <li>Invalid share token</li>
+                <li>Backend server is not accessible</li>
+                <li>CORS configuration issue</li>
               </ul>
               <p className="mt-2">Please contact the page owner for a new link.</p>
             </div>
+            
+            {debugInfo.length > 0 && (
+              <details className="mt-4">
+                <summary className="cursor-pointer font-semibold">Debug Information</summary>
+                <div className="mt-2 p-3 bg-gray-100 rounded text-xs font-mono max-h-60 overflow-y-auto">
+                  {debugInfo.map((info, i) => (
+                    <div key={i} className="mb-1">{info}</div>
+                  ))}
+                </div>
+              </details>
+            )}
           </CardContent>
         </Card>
       </div>
