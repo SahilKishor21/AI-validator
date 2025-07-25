@@ -4,7 +4,6 @@ import logging
 
 from ..services.ai_service import ai_service
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
