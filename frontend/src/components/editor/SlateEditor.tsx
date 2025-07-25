@@ -273,6 +273,66 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
     return () => clearTimeout(timeoutId)
   }, [editorValue, pageId, savePage, currentPage, readOnly])
 
+  // Alternative selection detection for readOnly mode
+  useEffect(() => {
+    if (!readOnly) return // Only use this for readOnly mode
+    
+    const handleGlobalSelectionChange = () => {
+      try {
+        const selection = window.getSelection()
+        console.log('Global selection change detected:', selection)
+        
+        if (!selection || selection.rangeCount === 0) {
+          console.log('No selection, hiding toolbar')
+          setSelectedText('')
+          setSelectionRange(null)
+          setShowFloatingToolbar(false)
+          return
+        }
+        
+        const range = selection.getRangeAt(0)
+        const text = range.toString().trim()
+        
+        console.log('Selected text:', text, 'Length:', text.length)
+        
+        if (!text || text.length === 0) {
+          setSelectedText('')
+          setSelectionRange(null)
+          setShowFloatingToolbar(false)
+          return
+        }
+        
+        // Check if selection is within our editor
+        const editorElement = editorRef.current
+        if (!editorElement || !editorElement.contains(range.commonAncestorContainer)) {
+          console.log('Selection not in editor')
+          return
+        }
+        
+        console.log('Valid selection in editor, showing toolbar')
+        setSelectedText(text)
+        setSelectionRange({ start: 0, end: text.length }) // Simplified for readOnly
+        setShowFloatingToolbar(true)
+        
+        // Update toolbar position
+        setTimeout(() => {
+          const rect = range.getBoundingClientRect()
+          const editorRect = editorElement.getBoundingClientRect()
+          setFloatingToolbarPosition({
+            top: rect.top - editorRect.top - 60,
+            left: rect.left - editorRect.left
+          })
+        }, 10)
+        
+      } catch (error) {
+        console.error('Global selection change error:', error)
+      }
+    }
+    
+    document.addEventListener('selectionchange', handleGlobalSelectionChange)
+    return () => document.removeEventListener('selectionchange', handleGlobalSelectionChange)
+  }, [readOnly])
+
   const handleChange = useCallback((newValue: CustomDescendant[]) => {
     // Only update editor value if not in readOnly mode
     if (!readOnly) {
@@ -440,10 +500,13 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
     }
   }, [editorValue])
 
-  const handleSelectionChange = useCallback(() => {
+  // Keep the original handler for non-readOnly mode
+  const handleSlateSelectionChange = useCallback(() => {
+    if (readOnly) return // Don't use this in readOnly mode
+    
     try {
       const { selection } = editor
-      console.log('Selection changed:', { selection, readOnly })
+      console.log('Slate selection changed:', { selection, readOnly })
       
       if (selection && Range.isCollapsed(selection)) {
         console.log('Selection collapsed, hiding toolbar')
@@ -476,6 +539,64 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
       setShowFloatingToolbar(false)
     }
   }, [editor, updateFloatingToolbarPosition, getTextOffset, readOnly])
+  useEffect(() => {
+    if (!readOnly) return // Only use this for readOnly mode
+    
+    const handleGlobalSelectionChange = () => {
+      try {
+        const selection = window.getSelection()
+        console.log('Global selection change detected:', selection)
+        
+        if (!selection || selection.rangeCount === 0) {
+          console.log('No selection, hiding toolbar')
+          setSelectedText('')
+          setSelectionRange(null)
+          setShowFloatingToolbar(false)
+          return
+        }
+        
+        const range = selection.getRangeAt(0)
+        const text = range.toString().trim()
+        
+        console.log('Selected text:', text, 'Length:', text.length)
+        
+        if (!text || text.length === 0) {
+          setSelectedText('')
+          setSelectionRange(null)
+          setShowFloatingToolbar(false)
+          return
+        }
+        
+        // Check if selection is within our editor
+        const editorElement = editorRef.current
+        if (!editorElement || !editorElement.contains(range.commonAncestorContainer)) {
+          console.log('Selection not in editor')
+          return
+        }
+        
+        console.log('Valid selection in editor, showing toolbar')
+        setSelectedText(text)
+        setSelectionRange({ start: 0, end: text.length }) // Simplified for readOnly
+        setShowFloatingToolbar(true)
+        
+        // Update toolbar position
+        setTimeout(() => {
+          const rect = range.getBoundingClientRect()
+          const editorRect = editorElement.getBoundingClientRect()
+          setFloatingToolbarPosition({
+            top: rect.top - editorRect.top - 60,
+            left: rect.left - editorRect.left
+          })
+        }, 10)
+        
+      } catch (error) {
+        console.error('Global selection change error:', error)
+      }
+    }
+    
+    document.addEventListener('selectionchange', handleGlobalSelectionChange)
+    return () => document.removeEventListener('selectionchange', handleGlobalSelectionChange)
+  }, [readOnly])
 
   const handleAIFactCheck = async () => {
     if (!selectedText.trim() || !selectionRange) return
@@ -628,7 +749,7 @@ ${actualSources && actualSources.length > 0 ? `📚 Sources:\n${actualSources.ma
               renderLeaf={renderLeaf}
               placeholder={readOnly ? "This is a shared page - select text to fact-check with AI..." : "Start typing here..."}
               className="focus:outline-none"
-              onSelect={handleSelectionChange}
+              onSelect={readOnly ? undefined : handleSlateSelectionChange}
               readOnly={readOnly}
               style={{ minHeight: '400px' }}
             />
@@ -644,13 +765,6 @@ ${actualSources && actualSources.length > 0 ? `📚 Sources:\n${actualSources.ma
                 zIndex: 1000
               }}
             >
-              {console.log('Rendering FloatingToolbar:', { 
-                showFloatingToolbar, 
-                selectedText, 
-                readOnly, 
-                isFactChecking,
-                position: floatingToolbarPosition 
-              })}
               <FloatingToolbar 
                 selectedText={selectedText}
                 onFactCheck={handleAIFactCheck}
