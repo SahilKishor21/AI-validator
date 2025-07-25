@@ -211,13 +211,16 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
     e.onChange = () => {
       const { operations } = e
       
-      operations.forEach(op => {
-        if (op.type === 'remove_text' && 'offset' in op && 'text' in op) {
-          const start = op.offset
-          const end = start + op.text.length
-          removeCommentsInRange(start, end)
-        }
-      })
+      // Only handle comment removal if not in readOnly mode
+      if (!readOnly) {
+        operations.forEach(op => {
+          if (op.type === 'remove_text' && 'offset' in op && 'text' in op) {
+            const start = op.offset
+            const end = start + op.text.length
+            removeCommentsInRange(start, end)
+          }
+        })
+      }
       
       onChange()
     }
@@ -253,7 +256,7 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
     }
     
     return e
-  }, [removeCommentsInRange])
+  }, [removeCommentsInRange, readOnly])
 
   useEffect(() => {
     const newValue = normalizeValue(value)
@@ -271,8 +274,11 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
   }, [editorValue, pageId, savePage, currentPage, readOnly])
 
   const handleChange = useCallback((newValue: CustomDescendant[]) => {
-    setEditorValue(newValue)
-  }, [])
+    // Only update editor value if not in readOnly mode
+    if (!readOnly) {
+      setEditorValue(newValue)
+    }
+  }, [readOnly])
 
   const renderElement = useCallback((props: any) => {
     const style: React.CSSProperties = {}
@@ -604,14 +610,17 @@ ${actualSources && actualSources.length > 0 ? `📚 Sources:\n${actualSources.ma
         onChange={handleChange}
         key={pageId}
       >
+        {/* Show editor toolbar only when not readOnly */}
         {!readOnly && <EditorToolbar onFactCheck={handleAIFactCheck} isFactChecking={isFactChecking} />}
         
         <div className="relative" ref={editorRef}>
-          <div className="border border-gray-200 rounded-lg p-6 min-h-[500px] focus-within:border-blue-500 transition-colors">
+          <div className={`border border-gray-200 rounded-lg p-6 min-h-[500px] transition-colors ${
+            readOnly ? 'bg-gray-50' : 'focus-within:border-blue-500'
+          }`}>
             <Editable
               renderElement={renderElement}
               renderLeaf={renderLeaf}
-              placeholder="Start typing here..."
+              placeholder={readOnly ? "This is a shared page - select text to fact-check with AI..." : "Start typing here..."}
               className="focus:outline-none"
               onSelect={handleSelectionChange}
               readOnly={readOnly}
@@ -619,7 +628,8 @@ ${actualSources && actualSources.length > 0 ? `📚 Sources:\n${actualSources.ma
             />
           </div>
           
-          {showFloatingToolbar && !readOnly && (
+          {/* Show floating toolbar for AI features even in readOnly mode */}
+          {showFloatingToolbar && (
             <div 
               style={{
                 position: 'absolute',
@@ -638,6 +648,7 @@ ${actualSources && actualSources.length > 0 ? `📚 Sources:\n${actualSources.ma
         </div>
       </Slate>
       
+      {/* Show comment system for AI fact-check results */}
       <CommentSystem comments={comments} />
     </div>
   )
