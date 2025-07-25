@@ -443,7 +443,10 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
   const handleSelectionChange = useCallback(() => {
     try {
       const { selection } = editor
+      console.log('Selection changed:', { selection, readOnly })
+      
       if (selection && Range.isCollapsed(selection)) {
+        console.log('Selection collapsed, hiding toolbar')
         setSelectedText('')
         setSelectionRange(null)
         setShowFloatingToolbar(false)
@@ -451,6 +454,8 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
         const text = Editor.string(editor, selection)
         const start = getTextOffset(selection.anchor)
         const end = getTextOffset(selection.focus)
+        
+        console.log('Text selected:', { text, length: text.length, readOnly })
         
         setSelectedText(text)
         setSelectionRange({ 
@@ -460,6 +465,7 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
         setShowFloatingToolbar(text.length > 0)
         
         if (text.length > 0) {
+          console.log('Showing floating toolbar for text:', text)
           setTimeout(updateFloatingToolbarPosition, 10)
         }
       }
@@ -469,7 +475,7 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
       setSelectionRange(null)
       setShowFloatingToolbar(false)
     }
-  }, [editor, updateFloatingToolbarPosition, getTextOffset])
+  }, [editor, updateFloatingToolbarPosition, getTextOffset, readOnly])
 
   const handleAIFactCheck = async () => {
     if (!selectedText.trim() || !selectionRange) return
@@ -638,6 +644,13 @@ ${actualSources && actualSources.length > 0 ? `📚 Sources:\n${actualSources.ma
                 zIndex: 1000
               }}
             >
+              {console.log('Rendering FloatingToolbar:', { 
+                showFloatingToolbar, 
+                selectedText, 
+                readOnly, 
+                isFactChecking,
+                position: floatingToolbarPosition 
+              })}
               <FloatingToolbar 
                 selectedText={selectedText}
                 onFactCheck={handleAIFactCheck}
